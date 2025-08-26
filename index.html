@@ -2,91 +2,56 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<title>RegiBot mit Punktesystem</title>
+<title>RegiBot Beta Tester</title>
 <style>
 html, body {
-  margin: 0;
-  padding: 0;
+  margin: 0; padding: 0;
   height: 100%;
   font-family: Arial, sans-serif;
   background-color: #0e0e10;
   color: #fff;
-  overflow: hidden; /* keine Bewegung */
+  overflow: hidden;
 }
-.container {
-  display: flex;
-  width: 100%;
-  height: 100%;
-}
-.stream {
-  flex: 0 0 60%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background-color: #000;
-}
-.stream img {
-  max-width: 90%;
-  max-height: 90%;
-}
-.chat-section {
-  flex: 0 0 40%;
-  display: flex;
-  flex-direction: column;
-  border-left: 2px solid #333;
-}
-.chat-container {
-  flex: 1;
-  overflow-y: auto;
-  padding: 10px;
-  scroll-behavior: smooth;
-}
-.message {
-  margin: 3px 0;
-  font-size: 14px;
-  line-height: 1.8;
-}
+.container { display: flex; width: 100%; height: 100%; }
+.stream { flex: 0 0 60%; display: flex; justify-content: center; align-items: center; background-color: #000; }
+.stream img { max-width: 90%; max-height: 90%; }
+.chat-section { flex: 0 0 40%; display: flex; flex-direction: column; border-left: 2px solid #333; }
+.chat-container { flex: 1; overflow-y: auto; padding: 10px; scroll-behavior: smooth; }
+.message { margin: 3px 0; font-size: 14px; line-height: 1.8; }
 .username { font-weight: bold; }
 .bot { color: #FFD700; }
-.user1 { color: #FF4500; }
-.user2 { color: #1E90FF; }
-.user3 { color: #32CD32; }
-.user4 { color: #FF69B4; }
-.user5 { color: #00CED1; }
-.user6 { color: #ADFF2F; }
-.user7 { color: #FF6347; }
-.input-container {
-  display: flex;
-  border-top: 1px solid #333;
-  padding: 8px;
-  background-color: #18181b;
-  position: sticky; /* bleibt unten fixiert */
-  bottom: 0;
-}
-.input-container input {
-  flex: 1;
-  background-color: #0e0e10;
-  border: none;
-  color: white;
-  padding: 10px;
-  font-size: 14px;
-}
-.input-container button {
-  background-color: #9146ff;
-  border: none;
-  color: white;
-  padding: 10px 15px;
-  margin-left: 5px;
-  font-size: 14px;
-  cursor: pointer;
-  border-radius: 4px;
-}
+.user1 { color: #FF4500; } .user2 { color: #1E90FF; } .user3 { color: #32CD32; } .user4 { color: #FF69B4; }
+.user5 { color: #00CED1; } .user6 { color: #ADFF2F; } .user7 { color: #FF6347; }
+.input-container { display: flex; border-top: 1px solid #333; padding: 8px; background-color: #18181b; position: sticky; bottom: 0; }
+.input-container input { flex: 1; background-color: #0e0e10; border: none; color: white; padding: 10px; font-size: 14px; }
+.input-container button { background-color: #9146ff; border: none; color: white; padding: 10px 15px; margin-left: 5px; font-size: 14px; cursor: pointer; border-radius: 4px; }
 .input-container input:focus { outline: none; }
 .input-container button:hover { background-color: #772ce8; }
 .emoji { width: 35px; vertical-align: middle; margin-left: 4px; }
+
+/* Cookie Overlay */
+#cookieOverlay {
+  position: fixed; top:0; left:0; width:100%; height:100%;
+  background: rgba(0,0,0,0.95);
+  display: flex; flex-direction: column; justify-content: center; align-items: center;
+  color: #fff; font-size: 16px; z-index: 1000;
+  text-align: center; padding: 20px;
+}
+#cookieOverlay button { margin-top: 20px; padding: 10px 20px; font-size: 16px; cursor: pointer; background-color: #9146ff; border:none; border-radius:4px; color:white; }
+#cookieOverlay button:hover { background-color: #772ce8; }
+
+/* Ladebalken */
+#loader { width: 80%; height: 20px; background: #333; margin-top:20px; display:none; border-radius: 10px; overflow:hidden; }
+#loaderInner { width: 0%; height: 100%; background: #9146ff; transition: width 0.1s linear; }
 </style>
 </head>
 <body>
+
+<div id="cookieOverlay">
+  <p>Sie sind auf einer Beta Tester Website gelandet.<br>Diese Website dient zur Ideensammlung etc. für den Streamer <b>Regisseur_</b>.<br><br>Erstellt by TagWolf</p>
+  <button onclick="acceptCookies()">OK</button>
+  <div id="loader"><div id="loaderInner"></div></div>
+</div>
 
 <div class="container">
   <div class="stream">
@@ -106,128 +71,80 @@ html, body {
 const chat = document.getElementById('chat');
 const input = document.getElementById('messageInput');
 const users = ["user1","user2","user3","user4","user5","user6","user7"];
+let voteActive=false,voteTitle="",votesYes=0,votesNo=0,voters=new Set(),voteTimeout;
+const emojis={ plusOne:"https://i.imgur.com/qx5z9Jx.png", yes:"https://i.imgur.com/8uPfPfj.png", lost:"https://i.imgur.com/Wi2cC0Z.png" };
+const points={},members=new Set(["Du","user1","user3"]);
 
-let voteActive = false;
-let voteTitle = "";
-let votesYes = 0;
-let votesNo = 0;
-let voters = new Set();
-let voteTimeout;
-
-const emojis = {
-  plusOne: "https://i.imgur.com/qx5z9Jx.png",
-  yes: "https://i.imgur.com/8uPfPfj.png",
-  lost: "https://i.imgur.com/Wi2cC0Z.png"
-};
-
-const points = {};
-const members = new Set(["Du", "user1", "user3"]);
-
-function addMessage(username, cls, text){
-  const msg = document.createElement("div");
+function addMessage(username,cls,text){
+  const msg=document.createElement("div");
   msg.classList.add("message");
-  msg.innerHTML = `<span class="username ${cls}">${username}:</span> ${text}`;
+  msg.innerHTML=`<span class="username ${cls}">${username}:</span> ${text}`;
   chat.appendChild(msg);
-  chat.scrollTop = chat.scrollHeight; // automatisches Scrollen
+  chat.scrollTop=chat.scrollHeight;
 }
 
 function sendMessage(){
-  const text = input.value.trim();
-  if(!text) return;
-  addMessage("Du","user1",text);
-  addPoints("Du",1);
-  handleCommand("Du",text);
-  input.value="";
+  const text=input.value.trim(); if(!text) return;
+  addMessage("Du","user1",text); addPoints("Du",1); handleCommand("Du",text); input.value="";
 }
 
 function handleCommand(sender,text){
-  const args = text.split(" ");
-  const cmd = args.shift().toLowerCase();
-
-  if(cmd==="!punkte"){
-    addMessage("RegiBot","bot",`@${sender} Punkte: ${points[sender]||0}`);
-    return;
-  }
-
-  if(cmd==="!startskip" && !voteActive){
-    if(args.length<2){ addMessage("RegiBot","bot","Format: !startskip <Songname> <Grund>"); return; }
-    const song = args.slice(0,-1).join(" ");
-    const reason = args[args.length-1];
-    startVote(`Song: ${song}`, reason);
-    return;
-  }
-
-  if(cmd==="!startvote" && !voteActive){
-    if(args.length<1){ addMessage("RegiBot","bot","Format: !startvote <Abstimmungstext>"); return; }
-    const title = args.join(" ");
-    startVote(title);
-    return;
-  }
-
+  const args=text.split(" "); const cmd=args.shift().toLowerCase();
+  if(cmd==="!punkte"){ addMessage("TagWolf","bot",`@${sender} Punkte: ${points[sender]||0}`); return; }
+  if(cmd==="!startskip" && !voteActive){ if(args.length<2){ addMessage("TagWolf","bot","Format: !startskip <Songname> <Grund>"); return; } const song=args.slice(0,-1).join(" "); const reason=args[args.length-1]; startVote(`Song: ${song}`,reason); return; }
+  if(cmd==="!startvote" && !voteActive){ if(args.length<1){ addMessage("TagWolf","bot","Format: !startvote <Abstimmungstext>"); return; } const title=args.join(" "); startVote(title); return; }
   if(voteActive && (cmd==="!ja"||cmd==="!nein")) registerVote(sender,"user1",cmd);
 }
 
 function startVote(title,reason=""){
-  voteActive=true;
-  voteTitle=title;
-  votesYes=0;
-  votesNo=0;
-  voters.clear();
-  let msg=`Abstimmung gestartet: ${title}`;
-  if(reason) msg+=` – Grund: ${reason}`;
-  msg+=` – Stimmen mit !ja oder !nein. (20 Sekunden, 5x !ja nötig)`;
-  addMessage("RegiBot","bot",msg);
-  simulateVoting();
-  voteTimeout=setTimeout(endVote,20000);
+  voteActive=true; voteTitle=title; votesYes=0; votesNo=0; voters.clear();
+  let msg=`Abstimmung gestartet: ${title}`; if(reason) msg+=` – Grund: ${reason}`; msg+=` – Stimmen mit !ja oder !nein. (20 Sekunden, 5x !ja nötig)`;
+  addMessage("TagWolf","bot",msg);
+  simulateVoting(); voteTimeout=setTimeout(endVote,20000);
 }
 
 function registerVote(user,cls,cmd){
-  if(voters.has(user)){ addMessage("RegiBot","bot",`@${user} hat bereits abgestimmt!`); return; }
-  voters.add(user);
-  addPoints(user,2);
-  if(cmd==="!ja"){
-    votesYes++;
-    addMessage("RegiBot","bot",`${user} stimmt mit JA ✅ (${votesYes} Ja / ${votesNo} Nein) <img class="emoji" src="${emojis.plusOne}">`);
-    if(votesYes>=5){
-      clearTimeout(voteTimeout);
-      addMessage("RegiBot","bot",`Abstimmung **${voteTitle}** erfolgreich! 🎉 <img class="emoji" src="${emojis.yes}">`);
-      addPointsAll(5);
-      voteActive=false;
-    }
-  } else {
-    votesNo++;
-    addMessage("RegiBot","bot",`${user} stimmt mit NEIN ❌ (${votesYes} Ja / ${votesNo} Nein)`);
-  }
+  if(voters.has(user)){ addMessage("TagWolf","bot",`@${user} hat bereits abgestimmt!`); return; }
+  voters.add(user); addPoints(user,2);
+  if(cmd==="!ja"){ votesYes++; addMessage("TagWolf","bot",`${user} stimmt mit JA ✅ (${votesYes} Ja / ${votesNo} Nein) <img class="emoji" src="${emojis.plusOne}">`);
+    if(votesYes>=5){ clearTimeout(voteTimeout); addMessage("TagWolf","bot",`Abstimmung **${voteTitle}** erfolgreich! 🎉 <img class="emoji" src="${emojis.yes}">`); addPointsAll(5); voteActive=false; }
+  } else { votesNo++; addMessage("TagWolf","bot",`${user} stimmt mit NEIN ❌ (${votesYes} Ja / ${votesNo} Nein)`); }
 }
 
 function endVote(){
   if(!voteActive) return;
-  if(votesYes>=5) addMessage("RegiBot","bot",`Abstimmung beendet: ${voteTitle} – Ergebnis: ${votesYes} Ja / ${votesNo} Nein <img class="emoji" src="${emojis.yes}">`);
-  else addMessage("RegiBot","bot",`Abstimmung beendet: ${voteTitle} – Ergebnis: ${votesYes} Ja / ${votesNo} Nein <img class="emoji" src="${emojis.lost}">`);
+  if(votesYes>=5) addMessage("TagWolf","bot",`Abstimmung beendet: ${voteTitle} – Ergebnis: ${votesYes} Ja / ${votesNo} Nein <img class="emoji" src="${emojis.yes}">`);
+  else addMessage("TagWolf","bot",`Abstimmung beendet: ${voteTitle} – Ergebnis: ${votesYes} Ja / ${votesNo} Nein <img class="emoji" src="${emojis.lost}">`);
   voteActive=false;
 }
 
-function addPoints(user,amount){
-  if(members.has(user)) amount=Math.ceil(amount*1.5);
-  points[user]=(points[user]||0)+amount;
-}
-
-function addPointsAll(amount){
-  Object.keys(points).forEach(u=>addPoints(u,amount));
-}
-
-function simulateVoting(){
-  users.forEach((u,i)=>{
-    setTimeout(()=>{
-      if(!voteActive) return;
-      const decision=Math.random()<0.5?"!ja":"!nein";
-      registerVote(u,u,decision);
-    },2000+i*1500);
-  });
-}
+function addPoints(user,amount){ if(members.has(user)) amount=Math.ceil(amount*1.5); points[user]=(points[user]||0)+amount; }
+function addPointsAll(amount){ Object.keys(points).forEach(u=>addPoints(u,amount)); }
+function simulateVoting(){ users.forEach((u,i)=>{ setTimeout(()=>{ if(!voteActive) return; const decision=Math.random()<0.5?"!ja":"!nein"; registerVote(u,u,decision); },2000+i*1500); }); }
 
 input.addEventListener("keypress",e=>{ if(e.key==="Enter") sendMessage(); });
-</script>
 
+/* Cookie & Loader */
+function acceptCookies(){
+  const overlay=document.getElementById("cookieOverlay");
+  const loader=document.getElementById("loader");
+  const loaderInner=document.getElementById("loaderInner");
+  overlay.querySelector("button").style.display="none";
+  loader.style.display="block";
+  let width=0;
+  let speed=50; // Anfangsgeschwindigkeit
+  const interval=setInterval(()=>{
+    width += 1;
+    loaderInner.style.width=width+"%";
+    speed *= 0.95; // beschleunigt
+    if(width>=100){ clearInterval(interval); overlay.style.display="none"; addSystemMessage(); }
+  }, speed);
+}
+
+function addSystemMessage(){
+  const sysInfo=`RegiBot Model by TagWolf | System Info: Browser: ${navigator.userAgent}`;
+  addMessage("TagWolf","bot",`Version geladen... ${sysInfo}`);
+}
+</script>
 </body>
 </html>
